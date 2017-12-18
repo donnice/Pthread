@@ -14,16 +14,16 @@ int r1 = 0, r2 = 0;
 //	return 0;
 //}
 
-void do_one_thing(int *pnum_times)
-{
-	int i, j, x;
-
-	for(i = 0; i < 4; i++) {
-		printf("doing one thing\n");
-		for(j = 0; j < 1000; j++) x = x+i;
-		(*pnum_times)++;
-	}
-}
+//void do_one_thing(int *pnum_times)
+//{
+//	int i, j, x;
+//
+//	for(i = 0; i < 4; i++) {
+//		printf("doing one thing\n");
+//		for(j = 0; j < 1000; j++) x = x+i;
+//		(*pnum_times)++;
+//	}
+//}
 
 void do_another_thing(int *pnum_times)
 {
