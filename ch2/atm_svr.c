@@ -5,6 +5,7 @@ typedef struct workorder {
 
 /* unrunnable code */
 
+/* boss thread */
 extern int
 main(int argc, char **argv)
 {
@@ -33,4 +34,38 @@ main(int argc, char **argv)
 	}
 	server_comm_shutdown();
 	return 0;
+}
+
+/* worker thread */
+void process_request(workorder_t *workorderp)
+{
+	char resp_buf[COMM_BUF_SIZE];
+	int trans_id;
+	sscanf(workorderp->req_buf, "%d", &trans_id);
+
+	switch(trans_id) {
+		case CREATE_ACCT_TRANS:
+			create_account(resp_buf);
+			break;
+
+		case DEPOSIT_TRANS:
+			deposit(workorderp->req_buf, resp_buf);
+			break;
+
+		case WITHDRAW_TRANS:
+			withdraw(workorderp->req_buf, resp_buf);
+			break;
+
+		case BALANCE_TRANS:
+			balance(workorderp->req_buf, resp_buf);
+			break;
+
+		default:
+			handle_bad_trans_id(workorderp->req_buf, resp_buf);
+			break;
+	}
+
+	server_comm_send_response(workorderp->conn, resp_buf);
+
+	free(workorderp);
 }
