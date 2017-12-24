@@ -2,6 +2,7 @@
 #define MAX_NUM_ACCOUNTS 3
 
 pthread_mutex_t global_data_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t *mutexp;
 
 void deposit(char *req_buf, char *resp_buf)
 {
@@ -11,6 +12,9 @@ void deposit(char *req_buf, char *resp_buf)
 
 	/* parse input string */
 	sscanf(req_buf, "%d %d %d %d", &temp, &id, &password, &amount);
+	/* Initialize a mutex dynamically with pthread_mutex_init */
+	mutexp = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(mutexp, NULL);
 
 	/* Check inputs */
 	if((id < 0) || (id >= MAX_NUM_ACCOUNTS)) {
