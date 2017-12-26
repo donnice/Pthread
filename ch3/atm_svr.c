@@ -8,9 +8,11 @@ typedef struct workorder {
 
 pthread_mutex_t gloabl_data_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t *mutexp;
+pthread_mutex_t account_mutex[MAX_NUM_ACCOUNTS];
 
 void process_request(workorder_t *workorderp);
 void deposit(char *req_buf, char *resp_buf);
+void atm_server_init();
 
 /* boss thread */
 extern int
@@ -86,8 +88,8 @@ void deposit(char *req_buf, char *resp_buf)
 	/* parse input string */
 	sscanf(req_buf, "%d %d %d %d", &temp, &id, &password, &amount);
 	/* Initialize a mutex dynamically with pthread_mutex_init */
-	mutexp = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
-	pthread_mutex_init(mutexp, NULL);
+	// mutexp = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+	// pthread_mutex_init(mutexp, NULL);
 
 	/* Check inputs */
 	if((id < 0) || (id >= MAX_NUM_ACCOUNTS)) {
@@ -95,13 +97,20 @@ void deposit(char *req_buf, char *resp_buf)
 		return;
 	}
 
-	pthread_mutex_lock(&global_data_mutex);
+	pthread_mutex_lock(&account_mutex[id]);
 
 	/* Retrive account from database */
 	if((rtn = retrieve_account(id, &accountp)) != 0) {
 		sprintf(resp_buf, "%d %s", TRANS_FAILURE, atm_err_tbl[-rtn]);
 	}
 
-	pthread_mutex_unlock(&global_data_mutex);
+	pthread_mutex_unlock(&account_mutex[id]);
 }
 
+void atm_server_init()
+{
+	int i = 0;
+
+	for(i = 0; i < MAX_NUM_ACCOUNTS; i++)
+		pthread_mutex_init(&account_mutex[i], NULL);
+}
