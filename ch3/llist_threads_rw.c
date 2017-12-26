@@ -46,7 +46,7 @@ int llist_insert_data(int index, void *datap, llist_t *llistp)
 	return 0;
 }
 
-int llist_find_data(int index, void *datapp, llist_t *llistp)
+int llist_find_data(int index, void *datap, llist_t *llistp)
 {
 
 	llist_node_t *cur, *prev, *new;
@@ -65,7 +65,7 @@ int llist_find_data(int index, void *datapp, llist_t *llistp)
 		}
 	}
 
-	pthread_rwdr_runlock_np(&(*llistp->rwlock));
+	pthread_rwdr_runlock_np(&(llistp->rwlock));
 
 	if(found) {
 		printf("Found index: %d", index);
