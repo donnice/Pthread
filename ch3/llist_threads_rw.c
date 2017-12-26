@@ -1,6 +1,6 @@
 /* llist.c */
 
-#include "llist_threads_rw.h"
+#include "rdwr.h"
 #define TRUE 1
 #define FALSE -1
 
