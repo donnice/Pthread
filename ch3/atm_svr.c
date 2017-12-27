@@ -1,18 +1,29 @@
 #include <pthread.h>
 #define MAX_NUM_ACCOUNTS 3
+#define MAX_NUM_THREADS 10
 
 typedef struct workorder {
 	int conn;
 	char req_buf[COMM_BUF_SIZE];
 } workorder_t;
 
+typedef struct {
+	int num_active;
+	pthread_cond_t	thread_exit_cv;
+	pthread_mutex_t mutex;
+} thread_info_t;
+
+thread_info_t worker_info;
+
 pthread_mutex_t gloabl_data_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t *mutexp;
 pthread_mutex_t account_mutex[MAX_NUM_ACCOUNTS];
+pthread_mutex_t create_account_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void process_request(workorder_t *workorderp);
 void deposit(char *req_buf, char *resp_buf);
 void atm_server_init();
+void create_account(char *resp_buf);
 
 /* boss thread */
 extern int
@@ -33,6 +44,14 @@ main(int argc, char **argv)
 		if(trans_id == SHUTDOWN) {
 			break;
 		}
+
+		pthread_mutex_lock(&worker_info.mutex);
+		while(worker_info.num_active == MAX_NUM_THREADS) {
+			pthread_cond_wait(&worker_info.thread_exit_cv,
+					&worker_info.mutex);
+		}
+		worker_info.num_active++;
+		pthread_mutex_unlock(&worker_info.mutex);
 
 		/*** Spawn a thread to process this request ***/
 		worker_threadp = (pthread_t *)malloc(sizeof(pthread_t));
@@ -113,4 +132,20 @@ void atm_server_init()
 
 	for(i = 0; i < MAX_NUM_ACCOUNTS; i++)
 		pthread_mutex_init(&account_mutex[i], NULL);
+}
+
+void create_account(char *resp_buf)
+{
+	int id;
+	int rtn;
+	account_t *accountp;
+
+	pthread_mutex_lock(&create_account_mutex);
+
+	/* Get a new account */
+	if((rtn = new_account(&id, &accountp)) < 0) {
+		sprintf(resp_buf, "%d %d %d %s", TRANS_FAILURE, -1, -1, atm_err_tbl[-rtn]);
+	}
+
+	pthread_mutex_unlock(&create_account_mutex);
 }
