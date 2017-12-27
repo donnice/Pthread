@@ -42,7 +42,22 @@ main(int argc, char **argv)
 
 		sscanf(workorderp->req_buf, "%d", &trans_id);
 		if(trans_id == SHUTDOWN) {
-			break;
+			char resp_buf[COMM_BUF_SIZE];
+			
+			pthread_mutex_lock(&worker_info.mutex);
+
+			/* Wait for in-progress requests threads to finish */
+			while(worker_info.num_active > 0) {
+				pthread_cond_wait(&worker_info.thread_exit_cv, &worker_info.mutex);
+			}
+			pthread_mutex_unlock(&worker_info.mutex);
+
+			/* process it with main() thread */
+			if(shutdown_req(workorderp->req_buf, resp_buf)) {
+				server_comm_send_response(workorderp->conn, resp_buf);
+				free(workorderp);
+				break;
+			}
 		}
 
 		pthread_mutex_lock(&worker_info.mutex);
@@ -96,6 +111,12 @@ void process_request(workorder_t *workorderp)
 	server_comm_send_response(workorderp->conn, resp_buf);
 
 	free(workorderp);
+	
+	pthread_mutex_lock(&worker_info.mutex);
+	workder_info.num_active--;
+	if(worker_info.num_active == (MAX_NUM_THREADS - 1))
+		pthread_cond_signal(&worker_info.thread_exit_cv);
+	pthread_mutex_unlock(&worker_info.mutex);
 }
 
 void deposit(char *req_buf, char *resp_buf)
