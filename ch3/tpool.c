@@ -94,3 +94,40 @@ void tpool_thread(tpool_t tpool)
 		free(my_workp);
 	}
 }
+
+int tpool_add_work(tpool_t tpool, void *routine, void *arg)
+{
+	tpool_work_t *workp;
+	pthread_mutex_lock(&tpool->queue_lock);
+
+	if((tpool->cur_queue_size == tpool->max_queue_size) && 
+			tpool->do_not_block_when_full) {
+		pthread_mutex_unlock(&tpool->queue_lock);
+		return -1;
+	}
+
+	while((tpool->cur_queue_size == tpool->max_queue_size) &&
+			(!(tpool->shutdown || tpool->queue_closed))) {
+		pthread_cond_wait(&tpool->queue_not_full, &tpool->queue_lock);
+	}
+
+	if(tpool->shutdown || tpool->queue_closed) {
+		pthread_mutex_unlock(&tpool->queue_lock);
+		return -1;
+	}
+
+	/* allocate work structure */
+	workp = (tpool_work_t *)malloc(sizeof(tpool_work_t));
+	workp->routine = routine;
+	workp->next = NULL;
+	if(tpool->cur_queue_size == 0) {
+		tpool->queue_tail = tpool->queue_head = workp;
+		pthread_cond_broadcast(&tpool->queue_not_empty);
+	} else {
+		(tpool->queue_tail)->next = workp;
+		tpool->queue_tail = workp;
+	}
+	tpool->cur_queue_size++;
+	pthread_mutex_unlock(&tpool->queue_lock);
+	return 1;
+}

@@ -32,7 +32,7 @@ void tpool_init(tpool_t *tpoolp,
 
 void tpool_thread(tpool_t tpool);
 
-void tpool_add_work(tpool_t tpool,
+int tpool_add_work(tpool_t tpool,
 			   void *routine,
 			   void *arg);
 
