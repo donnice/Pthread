@@ -51,5 +51,46 @@ void tpool_init(tpool_t	*tpoolp,
 		if((rtn = pthread_create(&(tpool->threads[i]), 
 						NULL,
 						tpool_thread,
-						)
+						(void *)tpool))!=0) {
+				fprintf(stderr, "pthread_create %d", rtn);
+				exit(-1);
+		}
+	}
+	*tpoolp = tpool;
+}
+
+/* Has the logic each worker uses to check the q work*/
+void tpool_thread(tpool_t tpool)
+{
+	tpool_work_t *my_workp;
+
+	while(1) {
+		pthread_mutex_lock(&(tpool_queue_lock));
+		while((tpool->cur_queue_size == 0) && (!tpool->shutdown)) {
+			pthread_cond_wait(&(tpool->queue_not_empty),
+					&(tpool->queue_lock));
+		}
+
+		if(tpool->shutdown) {
+			pthread_mutex_unlock(&(tpool->queue_lock));
+			pthread_exit(NULL);
+		}
+
+		my_workp = tpool->queue_head;
+		tpool->cur_queue_size--;
+		if(tpool->cur_queue_size == 0)
+			tpool->queue_head = tpool->queue_tail = NULL;
+		else
+			tpool->queue_head = my_workp->next;
+
+		if((!tpool->do_not_block_when_full) &&
+				(tpool->cur_queue_size == (tpool->max_queue_size - 1)))
+			pthread_cond_broadcast(&(tpool->queue_not_full));
+
+		if(tpool->cur_queue_size == 0)
+			pthread_cond_signal(&(tpool->queue_empty));
+		pthread_mutex_unlock(&(tpool->queue_lock));
+		(*(my_workp->routine))(my_workp->arg);
+		free(my_workp);
+	}
 }

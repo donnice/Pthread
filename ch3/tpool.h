@@ -25,13 +25,15 @@ typedef struct tpool {
 	int shutdown;
 } *tpool_t;
 
-tpool_init(tpool_t *tpoolp,
+void tpool_init(tpool_t *tpoolp,
 		   int num_worker_threads,
 		   int max_queue_size,
 		   int do_not_block_when_full);
 
-tpool_add_work(tpool_t tpool,
+void tpool_thread(tpool_t tpool);
+
+void tpool_add_work(tpool_t tpool,
 			   void *routine,
 			   void *arg);
 
-tpool_destroy(tpool_t tpoolp, int finish);
+void tpool_destroy(tpool_t tpoolp, int finish);
