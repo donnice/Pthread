@@ -131,3 +131,72 @@ int tpool_add_work(tpool_t tpool, void *routine, void *arg)
 	pthread_mutex_unlock(&tpool->queue_lock);
 	return 1;
 }
+
+int tpool_destroy(tpool_t tpool,
+				  int	  finish)
+{
+	int i, rtn;
+	tpool_work_t *cur_nodep;
+
+	if((rtn = pthread_mutex_lock(&(tpool->queue_lock))) != 0) {
+		fprintf(stderr, "pthread_mutex_lock %d", rtn);
+		exit(-1);
+	}
+
+	/* Is a shutdown already in progress? */
+	if(tpool->queue_closed || tpool->shutdown) {
+		if((rtn = pthread_mutex_unlock(&(tpool->queue_lock))) != 0) {
+			fprintf(stderr, "pthread_mutex_unlock %d", rtn);
+			exit(-1);
+		}
+	}
+
+	tpool->queue_closed = 1;
+	
+	/* If finish is set, wait for workers to drain queue */
+	if(finish == 1) {
+		while(tpool->cur_queue_size != 0) {
+			if((rtn = pthread_cond_wait(&(tpool->queue_empty),
+							&(tpool->queue_lock)))!=0) {
+				fprintf(stderr, "pthread_cond_wait %d", rtn);
+				exit(-1);
+			}
+		}
+	}
+
+	tpool->shutdown = 1;
+
+	if((rtn = pthread_mutex_unlock(&(tpool->queue_lock)))!=0) {
+		fprintf(stderr, "pthread_mutex_unlock %d", rtn);
+		exit(-1);
+	}
+
+	/* Wake up any workers so they recheck shutdown flag */
+	if((rtn = pthread_cond_broadcast(&(tpool->queue_not_empty))) != 0) {
+		fprintf(stderr, "pthread_cond_broadcast %d", rtn);
+		exit(-1);
+	}
+
+	if((rtn = pthread_cond_broadcast(&(tpool->queue_not_full))) != 0) {
+		fprintf(stderr, "pthread_cond_broadcast %d", rtn);
+		exit(-1);
+	}
+
+	/* Wait for workers to exit */
+	for(i = 0; i < tpool->num_threads; i++) {
+		if((rtn = pthread_join(tpool->threads[i], NULL)) != 0) {
+			fprintf(stderr, "pthread_join %d", rtn);
+			exit(-1);
+		}
+	}
+
+	/* Now free pool structures */
+	free(tpool->threads);
+	while(tpool->queue_head != NULL) {
+		cur_nodep = tpool->queue_head;
+		tpool->queue_head = tpool->queue_head->next;
+		free(cur_nodep);
+	}
+	free(tpool);
+	return 0;
+}

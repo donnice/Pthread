@@ -36,4 +36,4 @@ int tpool_add_work(tpool_t tpool,
 			   void *routine,
 			   void *arg);
 
-void tpool_destroy(tpool_t tpoolp, int finish);
+int tpool_destroy(tpool_t tpoolp, int finish);
