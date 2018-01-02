@@ -89,3 +89,53 @@ void *bullet_proof(int *my_id)
 
 	return(NULL);
 }
+
+void *ask_for_it(int *my_id)
+{
+	int i = 0, last_state, last_type;
+	char *messagep;
+
+	messagep = (char *)malloc(MESSAGE_MAX_LEN);
+	sprintf(messagep, "bullet_proof, thread #%d: ", *my_id);
+
+	/* we turn on general cancelability here and disable async cancellation */
+	printf("%s\tI am alive, setting general cancelibility OFF\n", messagep);
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &last_state);
+	pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &last_type);
+
+	pthread_mutex_lock(&lock);
+	{
+		printf("\n%s signaling main that my init is done\n", messagep);
+		count -= 1;
+		/* signal to program that loop is entered */
+		pthread_cond_signal(&init_done);
+		pthread_mutex_unlock(&lock);
+	}
+	
+	for(;;i++) {
+		if(i%1000 == 0)
+			print_count(messagep, *my_id, i);
+		if(i%10000 == 0) {
+			printf("\n%sI will tell you when you can cancel me. %d\n", messagep, i);
+			pthread_testcancel();
+		}
+	}
+	return(NULL);
+}
+
+
+	/* Now we are safe to turn on async cancelability */
+	printf("s\tI am alive, setting async cancellaton ON\n", messagep);
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &last_type);
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &last_state);
+
+	/* Loop forever until picked off with a cancel */
+	for(;;i++) {
+		if(i%1000 == 0)
+			print_count(messagep, *my_id, i);
+		if(i%10000 == 0)
+			printf("\n%s This is the thread never ends... %d\n", messagep, i);
+	}
+
+	return(NULL);
+}
