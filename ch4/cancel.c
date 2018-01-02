@@ -4,6 +4,8 @@
 #include <sys/types.h>
 #include <pthread.h>
 #define NUM_THREADS 3
+#define MESSAGE_MAX_LEN 81920
+
 int count = NUM_THREADS;
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t init_done = PTHREAD_COND_INITIALIZER;
@@ -54,4 +56,36 @@ main(void)
 	}
 	printf("main(): all %d threads have finished. \n", NUM_THREADS);
 	return 0;
+}
+
+void *bullet_proof(int *my_id)
+{
+	int i = 0, last_state;
+	char *messagep;
+
+	messagep = (char *)malloc(MESSAGE_MAX_LEN);
+	sprintf(messagep, "bullet_proof, thread #%d: ", *my_id);
+
+	printf("%s\tI am alive, setting general cancelibility OFF\n", messagep);
+
+	/* we turn off general cancelibility here */
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &last_state);
+	pthread_mutex_lock(&lock);
+	{
+		printf("\n%s signaling main that my init is done\n", messagep);
+		count -= 1;
+		/* signal to program that loop is entered */
+		pthread_cond_signal(&init_done);
+		pthread_mutex_unlock(&lock);
+	}
+
+	/* Loop forever until picked off with a cancel */
+	for(;;i++) {
+		if(i%10000 == 0)
+			print_count(messagep, *my_id, i);
+		if(i%10000 == 0)
+			printf("\n%s This is the thread never ends... %d\n", messagep, i);
+	}
+
+	return(NULL);
 }
