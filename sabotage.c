@@ -22,7 +22,7 @@ int main(int argc, char **argv)
 	fd = open(filename, O_RDWR);
 	while(sizeof(int) == read(fd, &key, sizeof(int))) {
 		if(key!=srch_key)
-			lseek(fd, sizeof(int), SEEK_CUR);
+			lseek(fd, sizeof(int), SEEK_CUR); // reposition cursor
 		else {
 			write(fd, &new_value, sizeof(int));
 			close(fd);
