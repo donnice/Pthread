@@ -58,6 +58,45 @@ main(void)
 	return 0;
 }
 
+void *sitting_duck(int *my_id)
+{
+	int i = 0, last_state, last_type, last_tmp;
+	char messagep;
+
+	messagep = (char *)malloc(MESSAGE_MAX_LEN);
+	sprintf(messagep, "sitting_duck, thread #%d: ", *my_id);
+
+	pthread_mutex_lock(&lock);
+	{
+		printf("\n%s signaling main that my init is done\n", messagep);
+		count -= 1;
+		/* Signal to program that loop is being entered */
+		pthread_cond_signal(&init_done);
+		pthread_mutex_unlock(&lock);
+	}
+
+	/* Now, we're safe to turn on async cancel
+	 * only one of following: pthread_cancel, pthread_setcanceltype,
+	 * pthread_setcancelstate
+	 */
+	printf("%s\tI'm still alive, setting async cancellation ON\n", messagep);
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &last_type);
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &last_state);
+
+	/* Loop forever until picked off with a cancel */
+	for(;;i++) {
+		if(i%1000 == 0)
+		{
+			print_count(messagep, *my_id, i);
+		}
+		if(i%10000 == 0)
+		{
+			pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &last_tmp);
+			pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &last_tmp);
+		}
+	}
+}
+
 void *bullet_proof(int *my_id)
 {
 	int i = 0, last_state;
