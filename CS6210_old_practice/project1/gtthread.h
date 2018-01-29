@@ -1,6 +1,8 @@
 #ifndef __GTTHREAD_H
 #define __GTTHREAD_H
 
+#include "gtthread.c"
+
 /* Must be called before any of below function */
 void gtthread_init(long period);
 
